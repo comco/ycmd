@@ -53,6 +53,11 @@ COMPLETERS = {
     'test': [ '--exclude-dir=ycmd/tests/clang' ],
     'aliases': [ 'c', 'cpp', 'c++', 'objc', 'clang', ]
   },
+  'clangd': {
+    'build': [],
+    'test': [ '--exclude-dir=ycmd/tests/clangd' ],
+    'aliases': []
+  },
   'cs': {
     'build': [ '--omnisharp-completer' ],
     'test': [ '--exclude-dir=ycmd/tests/cs' ],
