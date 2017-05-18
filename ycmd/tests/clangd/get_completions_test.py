@@ -24,17 +24,10 @@ from __future__ import division
 # Not installing aliases from python-future; it's unreliable and slow.
 from builtins import *  # noqa
 
-import json
-import requests
-from nose.tools import eq_
-from hamcrest import ( assert_that, contains, contains_inanyorder, empty,
-                       has_item, has_items, has_entry, has_entries,
-                       contains_string )
+from hamcrest import ( assert_that, contains_inanyorder, has_entries )
 
-from ycmd.tests.clangd import IsolatedYcmd, PathToTestFile, SharedYcmd
-from ycmd.responses import UnknownExtraConf, NoExtraConfDetected
-from ycmd.tests.test_utils import ( BuildRequest, CompletionEntryMatcher,
-                                    ErrorMatcher, UserOption, ExpectedFailure )
+from ycmd.tests.clangd import PathToTestFile, SharedYcmd
+from ycmd.tests.test_utils import ( BuildRequest, CompletionEntryMatcher )
 from ycmd.utils import ReadFile
 
 
@@ -44,18 +37,18 @@ def RunTest( app, test ):
 
   event_data = BuildRequest( filepath = filepath,
                              filetype = 'cpp',
-			     contents = contents,
-			     event_name = 'BufferVisit' )
+                             contents = contents,
+                             event_name = 'BufferVisit' )
 
   app.post_json( '/event_notification', event_data )
 
   completion_data = BuildRequest( filepath = filepath,
                                   filetype = 'cpp',
-				  contents = contents,
-				  force_semantic = True,
-				  line_num = 7,
-				  column_num = 5 )
-  
+                                  contents = contents,
+                                  force_semantic = True,
+                                  line_num = 7,
+                                  column_num = 5 )
+
   response = app.post_json( '/completions', completion_data )
 
   print( response )
@@ -69,12 +62,12 @@ def GetCompletions_Basic_test( app ):
     'expect': {
       'data': has_entries( {
         'completions': contains_inanyorder(
-	  CompletionEntryMatcher( 'x' ),
-	  CompletionEntryMatcher( 'yy' ),
-	  CompletionEntryMatcher( '~S' ),
-	  CompletionEntryMatcher( 'operator=' ),
-	  CompletionEntryMatcher( 'S' ),
-	)
+          CompletionEntryMatcher( 'x' ),
+          CompletionEntryMatcher( 'yy' ),
+          CompletionEntryMatcher( '~S' ),
+          CompletionEntryMatcher( 'operator=' ),
+          CompletionEntryMatcher( 'S' ),
+        )
       } )
     }
   } )

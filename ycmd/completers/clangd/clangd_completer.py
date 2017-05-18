@@ -23,22 +23,21 @@ from __future__ import absolute_import
 # Not installing aliases from python-future; it's unreliable and slow.
 from builtins import *  # noqa
 
-from collections import defaultdict, OrderedDict
-from future.utils import iteritems
-import os.path
-import re
-import textwrap
-import xml.etree.ElementTree
+try:
+  # For Python 3.3
+  from collections import OrderedDict
+except ImportError:
+  # For Python 2.6
+  from ordereddict import OrderedDict
+
 import subprocess
 import threading
 import itertools
 import json
-import subprocess
 import logging
 
 import ycm_core
 from ycmd import responses, utils
-from ycmd.utils import ToCppStringCompatible, ToUnicode
 from ycmd.completers.completer import Completer
 
 PATH_TO_CLANGD = utils.FindExecutable('/usr/bin/clangdtee.sh')
@@ -187,7 +186,7 @@ class ClangdCompleter( Completer ):
         _logger.exception( SERVER_NOT_RUNNING_MESSAGE )
         self._server_is_running.clear()
         continue
-      
+
       if 'id' in message:
         sequenceid = message[ 'id' ]
         with self._pending_lock:
@@ -202,7 +201,7 @@ class ClangdCompleter( Completer ):
             self._diagnostics = message
             self._has_diagnostics.set()
 
-  
+
   def _Notify( self, method, params ):
     """
     Sends a notification to clangd.
@@ -221,7 +220,7 @@ class ClangdCompleter( Completer ):
       self._pending[ sequenceid ] = deferred
     self._Write( request )
     return deferred.result()
-  
+
 
   def _Invoke( self, method, params ):
     """
@@ -255,12 +254,12 @@ class ClangdCompleter( Completer ):
       method = 'textDocument/didOpen',
       params = {
         'textDocument': {
-	  'uri': filename,
-	  'languageId': 'cpp',
-	  'version': 1,
-	  'text': contents
-	}
-      })
+          'uri': filename,
+          'languageId': 'cpp',
+          'version': 1,
+          'text': contents
+        }
+      } )
 
 
   def OnFileReadyToParse( self, request_data ):
@@ -300,17 +299,20 @@ class ClangdCompleter( Completer ):
           'character': offset
         }
       })
-    return [self._LSPCompletionItemToCompletionData(data) for data in res['result']]
+    return [ self._LSPCompletionItemToCompletionData( data )
+             for data in res[ 'result' ] ]
 
 
   def _LspToYcmdDiagnostic( self, filepath, line_value, lsp_diagnostic ):
     lsp_range_start = lsp_diagnostic[ 'range' ][ 'start' ]
     lsp_range_end = lsp_diagnostic[ 'range' ][ 'end' ]
 
-    start_offset = utils.CodepointOffsetToByteOffset( line_value,
-                                                      lsp_range_start[ 'character' ] )
-    end_offset = utils.CodepointOffsetToByteOffset( line_value,
-                                                    lsp_range_end[ 'character' ] )
+    start_offset = utils.CodepointOffsetToByteOffset(
+                     line_value,
+                     lsp_range_start[ 'character' ] )
+    end_offset = utils.CodepointOffsetToByteOffset(
+                   line_value,
+                   lsp_range_end[ 'character' ] )
 
     location_start = responses.Location( lsp_range_start[ 'line' ],
                                          start_offset,
