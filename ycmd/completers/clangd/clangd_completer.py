@@ -45,14 +45,16 @@ PATH_TO_CLANGD = utils.FindExecutable('/usr/bin/clangdtee.sh')
 CLANG_FILETYPES = set( [ 'c', 'cpp', 'objc', 'objcpp' ] )
 
 SERVER_NOT_RUNNING_MESSAGE = 'clangd is not running'
-RESPONSE_TIMEOUT_SECONDS = 2
+RESPONSE_TIMEOUT_SECONDS = 10
 
 _logger = logging.getLogger( __name__ )
 
 
 def ShouldEnableClangdCompleter():
+  if ycm_core.HasClangSupport():
+    return False
   if not PATH_TO_CLANGD:
-    _logger.warning( 'Not using clangd completer: unable to find clangd binary' )
+    _logger.warning( 'Not using clangd: unable to find clangd binary' )
     return False
   _logger.info( 'Using clangd from {0}'.format( PATH_TO_CLANGD ) )
   return True
@@ -245,9 +247,26 @@ class ClangdCompleter( Completer ):
     return CLANG_FILETYPES
 
 
+  def OnBufferVisit( self, request_data ):
+    filename = request_data[ 'filepath' ]
+    contents = request_data[ 'file_data' ][ filename ][ 'contents' ]
+    print( 'OnBufferVisit: ', filename )
+    self._Notify(
+      method = 'textDocument/didOpen',
+      params = {
+        'textDocument': {
+	  'uri': filename,
+	  'languageId': 'cpp',
+	  'version': 1,
+	  'text': contents
+	}
+      })
+
+
   def OnFileReadyToParse( self, request_data ):
     filename = request_data[ 'filepath' ]
     contents = request_data[ 'file_data' ][ filename ][ 'contents' ]
+    print( 'OnFileReadyToParse: ', filename )
     self._Notify(
       method = 'textDocument/didOpen',
       params = {
@@ -263,8 +282,8 @@ class ClangdCompleter( Completer ):
 
   def _LSPCompletionItemToCompletionData(self, data):
     return responses.BuildCompletionData(
-      insertion_text = data['label'],
-      kind = data['kind']
+      insertion_text = data[ 'label' ],
+      kind = data.get( 'kind', None )
     )
 
 
