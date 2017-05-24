@@ -40,7 +40,8 @@ import ycm_core
 from ycmd import responses, utils
 from ycmd.completers.completer import Completer
 
-PATH_TO_CLANGD = utils.FindExecutable('/usr/bin/clangdtee.sh')
+USE_CLANGD_INSTEAD_OF_CLANG = True
+PATH_TO_CLANGD = utils.FindExecutable( 'clangd' )
 CLANG_FILETYPES = set( [ 'c', 'cpp', 'objc', 'objcpp' ] )
 
 SERVER_NOT_RUNNING_MESSAGE = 'clangd is not running'
@@ -50,7 +51,7 @@ _logger = logging.getLogger( __name__ )
 
 
 def ShouldEnableClangdCompleter():
-  if ycm_core.HasClangSupport():
+  if not USE_CLANGD_INSTEAD_OF_CLANG and ycm_core.HasClangSupport():
     return False
   if not PATH_TO_CLANGD:
     _logger.warning( 'Not using clangd: unable to find clangd binary' )
@@ -104,10 +105,15 @@ class ClangdCompleter( Completer ):
     # Used to generate a unique id for requests to the server.
     self._sequenceid = itertools.count()
     self._sequenceid_lock = threading.Lock()
+    
+    # A map from previously opened filenames to document versions.
+    # Used to generate increasing versions for opened documents.
+    self._filename_version = dict()
+    self._filename_version_lock = threading.Lock()
 
     # Used to map sequence id's to their corresponding DeferredResponses.
     # The reader loop uses this to hand out responses.
-    self._pending = {}
+    self._pending = dict()
     self._pending_lock = threading.Lock()
 
     self._diagnostics = None
@@ -245,18 +251,26 @@ class ClangdCompleter( Completer ):
   def SupportedFiletypes( self ):
     return CLANG_FILETYPES
 
+  
+  def _GetNextFilenameVersion( self, filename ):
+    with self._filename_version_lock:
+      version = self._filename_version.get( filename, 0 ) + 1
+      self._filename_version[ filename ] = version
+    return version
+
 
   def OnBufferVisit( self, request_data ):
     filename = request_data[ 'filepath' ]
+    version = self._GetNextFilenameVersion( filename )
     contents = request_data[ 'file_data' ][ filename ][ 'contents' ]
-    print( 'OnBufferVisit: ', filename )
+    filetype = request_data[ 'file_data' ][ filename ][ 'filetypes' ][ 0 ]
     self._Notify(
       method = 'textDocument/didOpen',
       params = {
         'textDocument': {
           'uri': filename,
-          'languageId': 'cpp',
-          'version': 1,
+          'languageId': filetype,
+          'version': version,
           'text': contents
         }
       } )
@@ -264,18 +278,19 @@ class ClangdCompleter( Completer ):
 
   def OnFileReadyToParse( self, request_data ):
     filename = request_data[ 'filepath' ]
+    version = self._GetNextFilenameVersion( filename )
     contents = request_data[ 'file_data' ][ filename ][ 'contents' ]
-    print( 'OnFileReadyToParse: ', filename )
+    filetype = request_data[ 'file_data' ][ filename ][ 'filetypes' ][ 0 ]
     self._Notify(
-      method = 'textDocument/didOpen',
+      method = 'textDocument/didChange',
       params = {
         'textDocument': {
           'uri': filename,
-          'languageId': 'cpp',
-          'version': 1,
+          'languageId': filetype,
+          'version': version,
           'text': contents
         }
-      })
+      } )
     return self.GetDiagnosticsForCurrentFile( request_data )
 
 
@@ -333,13 +348,12 @@ class ClangdCompleter( Completer ):
   def GetDiagnosticsForCurrentFile( self, request_data ):
     filepath = request_data[ 'filepath' ]
     line_value = request_data[ 'line_value' ]
-    print( 'filepath', filepath )
     self._has_diagnostics.wait()
     with self._diagnostics_lock:
       diagnostics = self._diagnostics
       self._diagnostics = None
       self._has_diagnostics.clear()
-    res = [ self._LspToYcmdDiagnostic( filepath, line_value, lsp_diagnostic)
-           for lsp_diagnostic in diagnostics[ 'params' ][ 'diagnostics' ] ]
-    print( res )
-    return res
+      diagnostics = [
+        self._LspToYcmdDiagnostic( filepath, line_value, lsp_diagnostic)
+        for lsp_diagnostic in diagnostics[ 'params' ][ 'diagnostics' ] ]
+    return [ responses.BuildDiagnosticData( x ) for x in diagnostics ]

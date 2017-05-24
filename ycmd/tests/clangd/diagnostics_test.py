@@ -24,50 +24,42 @@ from __future__ import division
 # Not installing aliases from python-future; it's unreliable and slow.
 from builtins import *  # noqa
 
-from hamcrest import ( assert_that, contains_inanyorder, has_entries )
+from hamcrest import ( assert_that,
+                       equal_to,
+                       has_entries )
 
 from ycmd.tests.clangd import PathToTestFile, SharedYcmd
-from ycmd.tests.test_utils import ( BuildRequest, CompletionEntryMatcher )
+from ycmd.tests.test_utils import ( BuildRequest )
 from ycmd.utils import ReadFile
 
 
-def RunTest( app, test ):
-  filepath = PathToTestFile( 'completions_test.cpp' )
+@SharedYcmd
+def Diagnostics_FileReadyToParse_test( app ):
+  filepath = PathToTestFile( 'diagnostics_test.c' )
   contents = ReadFile( filepath )
 
   event_data = BuildRequest( filepath = filepath,
-                             filetype = 'cpp',
+                             filetype = 'c',
                              contents = contents,
                              event_name = 'BufferVisit' )
 
   app.post_json( '/event_notification', event_data )
 
-  completion_data = BuildRequest( filepath = filepath,
-                                  filetype = 'cpp',
-                                  contents = contents,
-                                  force_semantic = True,
-                                  line_num = 7,
-                                  column_num = 5 )
+  event_data = BuildRequest( filepath = filepath,
+                             filetype = 'c',
+                             contents = contents,
+                             event_name = 'FileReadyToParse' )
 
-  response = app.post_json( '/completions', completion_data )
+  results = app.post_json( '/event_notification', event_data ).json
 
-  print( response )
+  print( results )
 
-  assert_that( response.json, test[ 'expect' ][ 'data' ] )
-
-
-@SharedYcmd
-def GetCompletions_Basic_test( app ):
-  RunTest( app, {
-    'expect': {
-      'data': has_entries( {
-        'completions': contains_inanyorder(
-          CompletionEntryMatcher( 'x' ),
-          CompletionEntryMatcher( 'yy' ),
-          CompletionEntryMatcher( '~S' ),
-          CompletionEntryMatcher( 'operator=' ),
-          CompletionEntryMatcher( 'S' ),
-        )
-      } )
-    }
-  } )
+  assert_that( results[0],
+               has_entries( {
+                 'kind': equal_to( 'ERROR' ),
+                 'text': equal_to( "return type of 'main' is not 'int'" ),
+                 'location': has_entries( {
+                   'column_num': 1,
+                   'line_num': 0
+                 } )
+               } ) )

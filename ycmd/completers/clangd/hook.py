@@ -22,14 +22,11 @@ from __future__ import absolute_import
 # Not installing aliases from python-future; it's unreliable and slow.
 from builtins import *  # noqa
 
-import platform
-
 from ycmd.completers.clangd.clangd_completer import (
     ShouldEnableClangdCompleter, ClangdCompleter )
 
 
 def GetCompleter( user_options ):
-  print ('python_version:', platform.python_version() )
   if not ShouldEnableClangdCompleter():
     return None
 

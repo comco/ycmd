@@ -29,15 +29,21 @@ from ycmd.completers.clangd.clangd_completer import (
     ShouldEnableClangdCompleter )
 
 
-def ShouldEnableClangdCompleter_ClangdFound_test():
+@patch( 'ycmd.completers.clangd.clangd_completer.USE_CLANGD_INSTEAD_OF_CLANG',
+        True )
+def ShouldEnableClangdCompleter_UseClangdFound_test():
   ok_( ShouldEnableClangdCompleter() )
 
 
+@patch( 'ycmd.completers.clangd.clangd_completer.USE_CLANGD_INSTEAD_OF_CLANG',
+        True )
 @patch( 'ycmd.completers.clangd.clangd_completer.PATH_TO_CLANGD', None )
-def ShouldEnableClangdCompleter_ClangdNotFound_test():
+def ShouldEnableClangdCompleter_UseClangdNotFound_test():
   ok_( not ShouldEnableClangdCompleter() )
 
 
+@patch( 'ycmd.completers.clangd.clangd_completer.USE_CLANGD_INSTEAD_OF_CLANG',
+        False )
 @patch( 'ycm_core.HasClangSupport', lambda : True )
-def ShouldEnableClangdCompleter_HasClangSupport_test():
+def ShouldEnableClangdCompleter_NotUseClangdAndHasClangSupport_test():
   ok_( not ShouldEnableClangdCompleter() )
