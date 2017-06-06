@@ -105,7 +105,7 @@ class ClangdCompleter( Completer ):
     # Used to generate a unique id for requests to the server.
     self._sequenceid = itertools.count()
     self._sequenceid_lock = threading.Lock()
-    
+
     # A map from previously opened filenames to document versions.
     # Used to generate increasing versions for opened documents.
     self._filename_version = dict()
@@ -251,7 +251,7 @@ class ClangdCompleter( Completer ):
   def SupportedFiletypes( self ):
     return CLANG_FILETYPES
 
-  
+
   def _GetNextFilenameVersion( self, filename ):
     with self._filename_version_lock:
       version = self._filename_version.get( filename, 0 ) + 1
@@ -280,16 +280,16 @@ class ClangdCompleter( Completer ):
     filename = request_data[ 'filepath' ]
     version = self._GetNextFilenameVersion( filename )
     contents = request_data[ 'file_data' ][ filename ][ 'contents' ]
-    filetype = request_data[ 'file_data' ][ filename ][ 'filetypes' ][ 0 ]
     self._Notify(
       method = 'textDocument/didChange',
       params = {
         'textDocument': {
           'uri': filename,
-          'languageId': filetype,
-          'version': version,
+          'version': version
+        },
+        'contentChanges': [ {
           'text': contents
-        }
+        } ]
       } )
     return self.GetDiagnosticsForCurrentFile( request_data )
 

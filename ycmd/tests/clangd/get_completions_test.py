@@ -42,6 +42,13 @@ def RunTest( app, test ):
 
   app.post_json( '/event_notification', event_data )
 
+  event_data = BuildRequest( filepath = filepath,
+                             filetype = 'cpp',
+                             contents = contents,
+                             event_name = 'FileReadyToParse' )
+
+  app.post_json( '/event_notification', event_data )
+
   completion_data = BuildRequest( filepath = filepath,
                                   filetype = 'cpp',
                                   contents = contents,
